@@ -1,6 +1,6 @@
 import { Disposable, Logger } from "@mocha/shared";
 import { Signal, SignalConnection } from "./signals.js";
-import { registerMetaObject } from "./qmetaobject.js";
+import { registerMetaObject, getMetaObject } from "./qmetaobject.js";
 import type { QMetaObjectData } from "./types.js";
 
 const logger = new Logger("QObject");
@@ -164,20 +164,66 @@ export class QObject extends Disposable {
   }
 
   private _registerMetaObject(): void {
-    const ctor = this.constructor as Function & { _qmetaRegistered?: boolean };
-    if (ctor._qmetaRegistered) return;
-    ctor._qmetaRegistered = true;
+    const thisProto = Object.getPrototypeOf(this);
 
-    const className = this.constructor.name;
-    const proto = Object.getPrototypeOf(this);
-    const superCtor = proto?.constructor;
-    const superClass = superCtor !== QObject && superCtor !== Object
-      ? superCtor.name
+    const ctorsToRegister: Array<{
+      ctor: Function & { _qmetaRegistered?: boolean };
+      proto: any;
+    }> = [];
+
+    let proto = thisProto;
+    while (proto && proto !== Object.prototype) {
+      const ctor = proto.constructor as Function & { _qmetaRegistered?: boolean };
+      if (!ctor._qmetaRegistered) {
+        ctorsToRegister.push({ ctor, proto });
+        ctor._qmetaRegistered = true;
+      }
+      proto = Object.getPrototypeOf(proto);
+    }
+
+    for (const { ctor, proto } of ctorsToRegister) {
+      const superProto = Object.getPrototypeOf(proto);
+      const superCtor = superProto?.constructor;
+      const superClass = superCtor && superCtor !== Object
+        ? superCtor.name
+        : null;
+
+      if (superCtor && superCtor !== Object) {
+        (ctor as any).__superClass__ = superCtor;
+      }
+
+      const wantsDefer = superClass !== null;
+
+      const initialMeta: QMetaObjectData = {
+        className: ctor.name,
+        superClass,
+        properties: [],
+        signals: [],
+        slots: [],
+      };
+
+      registerMetaObject(ctor, initialMeta);
+    }
+
+    const leafCtor = thisProto.constructor as Function;
+    const rootSuperProto = Object.getPrototypeOf(thisProto);
+    const rootSuperCtor = rootSuperProto?.constructor;
+    const rootSuperClass = rootSuperCtor && rootSuperCtor !== Object
+      ? rootSuperCtor.name
       : null;
 
+    if (rootSuperClass) {
+      queueMicrotask(() => this._scanFields(leafCtor));
+    } else {
+      this._scanFields(leafCtor);
+    }
+  }
+
+  private _scanFields(ctor: Function): void {
     const props = Object.getOwnPropertyDescriptors(this);
     const properties = Object.entries(props)
       .filter(([_, desc]) => desc.value instanceof Signal === false)
+      .filter(([name]) => !name.startsWith("_") && typeof (this as any)[name] !== "function")
       .map(([name]) => ({
         name,
         type: typeof (this as any)[name],
@@ -191,14 +237,10 @@ export class QObject extends Disposable {
       .filter(([_, desc]) => desc.value instanceof Signal)
       .map(([name]) => name);
 
-    const meta: QMetaObjectData = {
-      className,
-      superClass,
-      properties,
-      signals,
-      slots: [],
-    };
+    const existing = getMetaObject(ctor);
+    if (!existing) return;
 
-    registerMetaObject(ctor, meta);
+    (existing as any).properties = properties;
+    (existing as any).signals = signals;
   }
 }

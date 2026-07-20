@@ -16,3 +16,5 @@ export type { QMetaProperty, QMetaMethod, QMetaObjectData, QObjectPointer, QThre
 export { effect, ReactiveEffect } from "./reactivity.js";
 export { Container, globalContainer, Injectable, inject } from "./di.js";
 export type { QmlInit, QmlDestroy } from "./lifecycle.js";
+export { DebugServer, ComponentInspector, PropertyInspector, SignalGraphBuilder, ThreadMonitor, DebuggerProxy } from "./debug/index.js";
+export type { DebugServerConfig, QmlTreeNode, ComponentNode, ComponentProperty, PropertySnapshot, PropertySnapshotEntry, SignalNode, SlotNode, SignalGraphConnection, SignalGraph, ThreadInfo, ThreadMonitorData, DebuggerState } from "./debug/index.js";

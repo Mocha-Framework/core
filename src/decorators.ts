@@ -1,23 +1,43 @@
 import type { QMetaProperty } from "./types.js";
 
 export function qproperty(
-  target: any,
-  propertyKey: string
+  valueOrTarget: any,
+  contextOrPropertyKey: string | ClassFieldDecoratorContext
 ): void {
-  if (typeof target !== "object" || target === null) return;
+  const propertyKey =
+    typeof contextOrPropertyKey === "string"
+      ? contextOrPropertyKey
+      : (contextOrPropertyKey.name as string);
 
-  Object.defineProperty(target, `__qproperty_${propertyKey}`, {
-    value: {
-      name: propertyKey,
-      type: "unknown",
-      isConstant: false,
-      isReadable: true,
-      isWritable: true,
-      notifySignal: `${propertyKey}Changed`,
-    } satisfies Partial<QMetaProperty>,
-    enumerable: false,
-    configurable: true,
-  });
+  const metaValue = {
+    name: propertyKey,
+    type: "unknown",
+    isConstant: false,
+    isReadable: true,
+    isWritable: true,
+    notifySignal: `${propertyKey}Changed`,
+  } satisfies Partial<QMetaProperty>;
+
+  if (typeof contextOrPropertyKey === "string") {
+    // Legacy decorator (experimentalDecorators: true)
+    const target = valueOrTarget;
+    if (typeof target !== "object" || target === null) return;
+    Object.defineProperty(target, `__qproperty_${propertyKey}`, {
+      value: metaValue,
+      enumerable: false,
+      configurable: true,
+    });
+  } else {
+    // Standard ES Decorator (TypeScript 5.0+)
+    const ctx = contextOrPropertyKey as ClassFieldDecoratorContext;
+    ctx.addInitializer(function () {
+      Object.defineProperty(this, `__qproperty_${propertyKey}`, {
+        value: metaValue,
+        enumerable: false,
+        configurable: true,
+      });
+    });
+  }
 }
 
 export function qapp(config: {
