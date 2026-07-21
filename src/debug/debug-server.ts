@@ -1,5 +1,5 @@
 import * as http from "node:http";
-import { Logger } from "@mocha/shared";
+import { Logger, safeStringify } from "@mocha/shared";
 import { QObject } from "../qobject.js";
 import { ComponentInspector, type ComponentNode } from "./component-inspector.js";
 import { PropertyInspector } from "./property-inspector.js";
@@ -201,7 +201,7 @@ export class DebugServer {
   }
 
   private _broadcast(type: string, data: unknown): void {
-    const message = `data: ${JSON.stringify({ type, data })}\n\n`;
+    const message = `data: ${safeStringify({ type, data })}\n\n`;
     for (const client of this._sseClients) {
       client.write(message);
     }
@@ -218,17 +218,17 @@ export class DebugServer {
 
     if (url === "/events") {
       res.writeHead(200, { "Content-Type": "text/event-stream", "Cache-Control": "no-cache", Connection: "keep-alive" });
-      res.write(`data: ${JSON.stringify({ type: "connected" })}\n\n`);
+      res.write(`data: ${safeStringify({ type: "connected" })}\n\n`);
       if (this._root) {
-        res.write(`data: ${JSON.stringify({ type: "component-tree", data: this._componentInspector.getTree() })}\n\n`);
-        res.write(`data: ${JSON.stringify({ type: "properties", data: this._propertyInspector.getAllProperties() })}\n\n`);
+        res.write(`data: ${safeStringify({ type: "component-tree", data: this._componentInspector.getTree() })}\n\n`);
+        res.write(`data: ${safeStringify({ type: "properties", data: this._propertyInspector.getAllProperties() })}\n\n`);
         if (this._qmlTree.length > 0) {
-          res.write(`data: ${JSON.stringify({ type: "qml-tree", data: this._qmlTree })}\n\n`);
+          res.write(`data: ${safeStringify({ type: "qml-tree", data: this._qmlTree })}\n\n`);
         }
         if (this._config.enableSignalGraph) {
-          res.write(`data: ${JSON.stringify({ type: "signal-graph", data: this._signalGraph.getGraph() })}\n\n`);
+          res.write(`data: ${safeStringify({ type: "signal-graph", data: this._signalGraph.getGraph() })}\n\n`);
         }
-        res.write(`data: ${JSON.stringify({ type: "thread-info", data: this._threadMonitor.capture() })}\n\n`);
+        res.write(`data: ${safeStringify({ type: "thread-info", data: this._threadMonitor.capture() })}\n\n`);
       }
       this._sseClients.add(res);
       req.on("close", () => { this._sseClients.delete(res); });
@@ -237,7 +237,7 @@ export class DebugServer {
 
     if (url === "/state") {
       res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({
+      res.end(safeStringify({
         componentTree: this._componentInspector.getTree(),
         qmlTree: this._qmlTree,
         properties: this._propertyInspector.getAllProperties(),

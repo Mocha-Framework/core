@@ -1,5 +1,5 @@
 import { QObject, QProperty, getMetaObjectHierarchy } from "../index.js";
-import { Logger } from "@mocha/shared";
+import { Logger, safeStringify } from "@mocha/shared";
 
 const logger = new Logger("PropertyInspector");
 
@@ -130,7 +130,7 @@ export class PropertyInspector {
       const a = snapshotA.properties[key]?.value;
       const b = snapshotB.properties[key]?.value;
 
-      if (JSON.stringify(a) !== JSON.stringify(b)) {
+      if (safeStringify(a) !== safeStringify(b)) {
         diffs[key] = { from: a, to: b };
       }
     }
