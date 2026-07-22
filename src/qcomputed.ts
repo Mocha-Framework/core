@@ -47,3 +47,7 @@ export class QComputedProperty<T> {
     this.changed.disconnect();
   }
 }
+
+export function computed<T>(fn: () => T): QComputedProperty<T> {
+  return new QComputedProperty(fn);
+}
