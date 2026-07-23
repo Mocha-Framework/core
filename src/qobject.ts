@@ -2,6 +2,7 @@ import { Disposable, Logger } from "@mocha/shared";
 import { Signal, SignalConnection } from "./signals.js";
 import { registerMetaObject, getMetaObject } from "./qmetaobject.js";
 import type { QMetaObjectData } from "./types.js";
+import { QProperty } from "./qproperty.js";
 
 const logger = new Logger("QObject");
 
@@ -137,6 +138,54 @@ export class QObject extends Disposable {
     this.destroyed.disconnect();
     this.objectNameChanged.disconnect();
     super.dispose();
+  }
+
+  // ── Bulk operations (NEW) ────────────────────────────────
+
+  /**
+   * Atomic batch update. Sets multiple @qproperty fields silently,
+   * then emits each changed signal in declaration order.
+   * Effects reading multiple fields see all new values at once.
+   *
+   * @example
+   * controller.bulkSet({ count: 5, message: "hello" })
+   */
+  bulkSet(updates: Record<string, unknown>): void {
+    const changed: Array<{ prop: QProperty<any>; val: unknown; prev: unknown }> = [];
+
+    for (const [name, value] of Object.entries(updates)) {
+      const prop = (this as any)[name];
+      if (!(prop instanceof QProperty)) {
+        throw new Error(
+          `${this.constructor.name}.bulkSet(): "${name}" is not a @qproperty. ` +
+          `Available: ${this._listQProperties().join(", ")}`
+        );
+      }
+      const prev = prop.value;
+      if (prev !== value) {
+        prop._setSilent(value);
+        changed.push({ prop, val: value, prev });
+      }
+    }
+
+    for (const { prop, val, prev } of changed) {
+      prop.changed.emit(val, prev);
+    }
+  }
+
+  /** Return all @qproperty field names declared on this object. */
+  private _listQProperties(): string[] {
+    const names: string[] = [];
+    let proto = Object.getPrototypeOf(this);
+    while (proto && proto !== Object.prototype) {
+      for (const key of Object.getOwnPropertyNames(proto)) {
+        if (key.startsWith("__qproperty_")) {
+          names.push(key.replace("__qproperty_", ""));
+        }
+      }
+      proto = Object.getPrototypeOf(proto);
+    }
+    return [...new Set(names)];
   }
 
   private _addChild(child: QObject): void {

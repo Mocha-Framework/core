@@ -14,6 +14,7 @@ export class QProperty<T = unknown> extends Disposable {
   private _value: T;
   private _internal =
     "qproperty" as unknown as T;
+  private _previous: T | undefined = undefined;
 
   readonly changed = new Signal<(value: T, previous: T) => void>();
   readonly beforeChange = new Signal<(value: T, previous: T) => void>();
@@ -39,6 +40,8 @@ export class QProperty<T = unknown> extends Disposable {
     };
   }
 
+  // ── Shortcut (existing, unchanged) ───────────────────────
+
   get value(): T {
     const active = activeEffectRef();
     if (active) active.addDep(this);
@@ -50,11 +53,14 @@ export class QProperty<T = unknown> extends Disposable {
     const previous = this._value;
     if (this._shouldSkipUpdate(previous, v)) return;
 
+    this._previous = previous;
     this.beforeChange.emit(v, previous);
     this._value = v;
     this.changed.emit(v, previous);
     this._propagateToBindings(v);
   }
+
+  // ── Canonical (existing) ─────────────────────────────────
 
   get(): T {
     return this._value;
@@ -63,6 +69,44 @@ export class QProperty<T = unknown> extends Disposable {
   set(v: T): void {
     this.value = v;
   }
+
+  // ── Functional helpers (NEW) ─────────────────────────────
+
+  /** Atomic read + write in one call. Preferred for code-gen. */
+  update(fn: (current: T) => T): void {
+    this.value = fn(this._value);
+  }
+
+  /** Value before the last set. */
+  previous(): T | undefined {
+    return this._previous;
+  }
+
+  /** Equality check without `.value`. */
+  equals(v: T): boolean {
+    return this._value === v;
+  }
+
+  /** Subscribe returning an unsubscribe function. */
+  onValue(fn: (value: T, previous?: T) => void): () => void {
+    const conn = this.changed.connect(fn as any);
+    return () => conn.disconnect();
+  }
+
+  /** Debug-friendly string. */
+  toString(): string {
+    return `QProperty(${JSON.stringify(this._value)})`;
+  }
+
+  // ── Internal: silent set (no signals) ────────────────────
+
+  _setSilent(v: T): void {
+    this._previous = this._value;
+    this._value = v;
+    this._propagateToBindings(v);
+  }
+
+  // ── Bindings (existing) ──────────────────────────────────
 
   bindTo(
     source: QProperty<T>,
