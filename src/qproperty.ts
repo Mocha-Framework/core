@@ -93,6 +93,16 @@ export class QProperty<T = unknown> extends Disposable {
     return () => conn.disconnect();
   }
 
+  /** One-shot subscribe. Fires once then auto-disconnects. */
+  once(fn: (value: T, previous?: T) => void): () => void {
+    const listener = (value: T, previous: T) => {
+      conn.disconnect();
+      fn(value, previous);
+    };
+    const conn = this.changed.connect(listener as any);
+    return () => conn.disconnect();
+  }
+
   /** Debug-friendly string. */
   toString(): string {
     return `QProperty(${JSON.stringify(this._value)})`;

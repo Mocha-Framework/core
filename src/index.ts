@@ -21,3 +21,6 @@ export type { InjectableOptions } from "./di.js";
 export type { QmlInit, QmlDestroy } from "./lifecycle.js";
 export { DebugServer, ComponentInspector, PropertyInspector, SignalGraphBuilder, ThreadMonitor, DebuggerProxy } from "./debug/index.js";
 export type { DebugServerConfig, QmlTreeNode, ComponentNode, ComponentProperty, PropertySnapshot, PropertySnapshotEntry, SignalNode, SlotNode, SignalGraphConnection, SignalGraph, ThreadInfo, ThreadMonitorData, DebuggerState } from "./debug/index.js";
+export { MochaForm } from "./form.js";
+export type { FormSchema, FieldInitializer, ValidatorFn } from "./form.js";
+export * from "./validators.js";
