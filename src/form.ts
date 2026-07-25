@@ -142,23 +142,4 @@ export class MochaForm<T extends FormSchema = any> extends QObject {
   }
 }
 
-// ── QObject.form() helper ──────────────────────────
 
-declare module "./qobject.js" {
-  interface QObject {
-    form<T extends FormSchema>(
-      schema: T,
-      name?: string
-    ): MochaForm<T>;
-  }
-}
-
-QObject.prototype.form = function <T extends FormSchema>(
-  schema: T,
-  name = "form"
-): MochaForm<T> {
-  const mf = new MochaForm(schema, name);
-  if (!(this as any).__mochaForms) (this as any).__mochaForms = [];
-  (this as any).__mochaForms.push({ instance: mf, name });
-  return mf;
-};
