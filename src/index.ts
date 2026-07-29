@@ -24,3 +24,12 @@ export type { DebugServerConfig, QmlTreeNode, ComponentNode, ComponentProperty, 
 export { MochaForm } from "./form.js";
 export type { FormSchema, FieldInitializer, ValidatorFn } from "./form.js";
 export * from "./validators.js";
+export {
+  input,
+  output,
+  model,
+  isInputRef,
+  isOutputRef,
+  isModelRef,
+} from "./inputs.js";
+export type { InputRef, OutputRef, ModelRef } from "./inputs.js";

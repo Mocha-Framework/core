@@ -62,6 +62,58 @@ describe("QProperty", () => {
     await flush();
     expect(a.value).toBe(30);
   });
+
+  test("update", () => {
+    const p = new QProperty(5);
+    p.update((v) => v + 1);
+    expect(p.value).toBe(6);
+  });
+
+  test("update with string", () => {
+    const p = new QProperty("hello");
+    p.update((v) => v + "!");
+    expect(p.value).toBe("hello!");
+  });
+
+  test("previous returns value before last set", () => {
+    const p = new QProperty(0);
+    p.value = 10;
+    expect(p.previous()).toBe(0);
+    p.value = 20;
+    expect(p.previous()).toBe(10);
+  });
+
+  test("equals compares without .value", () => {
+    const p = new QProperty(42);
+    expect(p.equals(42)).toBe(true);
+    expect(p.equals(0)).toBe(false);
+  });
+
+  test("onValue subscribes and returns unsubscribe", () => {
+    const p = new QProperty(0);
+    let calls: number[] = [];
+    const unsub = p.onValue((v) => calls.push(v));
+    p.value = 1;
+    p.value = 2;
+    unsub();
+    p.value = 3;
+    expect(calls).toEqual([1, 2]);
+  });
+
+  test("_setSilent does not emit changed signal", () => {
+    const p = new QProperty(0);
+    let changed = false;
+    p.changed.connect(() => { changed = true; });
+    (p as any)._setSilent(99);
+    expect(p.value).toBe(99);
+    expect(changed).toBe(false);
+  });
+
+  test("toString returns debug representation", () => {
+    const p = new QProperty(42);
+    expect(p.toString()).toContain("QProperty");
+    expect(p.toString()).toContain("42");
+  });
 });
 
 describe("Signal", () => {
@@ -139,6 +191,36 @@ describe("QObject", () => {
     obj.objectName = "renamed";
     expect(newName).toBe("renamed");
   });
+
+  test("bulkSet applies multiple properties atomically", () => {
+    class Model extends QObject {
+      count = new QProperty(0);
+      name = new QProperty("");
+    }
+    const m = new Model();
+    const log: string[] = [];
+    m.count.changed.connect(() => log.push("count"));
+    m.name.changed.connect(() => log.push("name"));
+
+    m.bulkSet({ count: 5, name: "hello" });
+    expect(m.count.value).toBe(5);
+    expect(m.name.value).toBe("hello");
+    expect(log).toEqual(["count", "name"]);
+  });
+
+  test("bulkSet emits signals in the set order", () => {
+    class Ordered extends QObject {
+      a = new QProperty(1);
+      b = new QProperty(2);
+    }
+    const m = new Ordered();
+    const log: string[] = [];
+    m.a.changed.connect(() => log.push("a"));
+    m.b.changed.connect(() => log.push("b"));
+
+    m.bulkSet({ b: 99, a: 88 });
+    expect(log).toEqual(["b", "a"]);
+  });
 });
 
 describe("QApplication", () => {
@@ -181,6 +263,60 @@ describe("effect (reactivity)", () => {
     await flush();
     expect(called).toBe(2);
     expect(lastSum).toBe(12);
+  });
+
+  test("effect with multiple dependencies", async () => {
+    const a = new QProperty(1);
+    const b = new QProperty(2);
+    const c = new QProperty(3);
+    let sum = 0;
+    effect(() => { sum = a.value + b.value + c.value; });
+    expect(sum).toBe(6);
+    a.value = 10;
+    await flush();
+    expect(sum).toBe(15);
+    b.value = 20;
+    await flush();
+    expect(sum).toBe(33);
+  });
+
+  test("effect cleans up stale dependencies", async () => {
+    const a = new QProperty(1);
+    const b = new QProperty(2);
+    const flag = new QProperty(true);
+    let last = 0;
+    effect(() => { last = flag.value ? a.value : b.value; });
+    expect(last).toBe(1);
+    a.value = 10;
+    await flush();
+    expect(last).toBe(10);
+    // Switch to reading b instead
+    flag.value = false;
+    await flush();
+    expect(last).toBe(2);
+    // Changing a should NOT trigger the effect now
+    a.value = 99;
+    await flush();
+    expect(last).toBe(2);
+    // Changing b should
+    b.value = 50;
+    await flush();
+    expect(last).toBe(50);
+  });
+
+  test("nested effects batch correctly", async () => {
+    const a = new QProperty(1);
+    const b = new QProperty(2);
+    const outer = new QProperty(0);
+    const inner = new QProperty(0);
+    effect(() => { outer.value = a.value; });
+    effect(() => { inner.value = a.value + b.value; });
+    await flush();
+    a.value = 10;
+    b.value = 20;
+    await flush();
+    expect(outer.value).toBe(10);
+    expect(inner.value).toBe(30);
   });
 });
 
