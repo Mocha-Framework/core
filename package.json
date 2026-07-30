@@ -16,6 +16,6 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@mocha/shared": "workspace:*"
+    "@mocha/shared": "^0.1.0"
   }
 }
