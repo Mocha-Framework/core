@@ -1,4 +1,4 @@
-import { Logger } from "@mocha/shared";
+import { Logger } from "../utils/index.js";
 
 const logger = new Logger("DebuggerProxy");
 

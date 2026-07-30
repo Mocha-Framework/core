@@ -1,4 +1,4 @@
-import { Disposable, Logger } from "@mocha/shared";
+import { Disposable, Logger } from "./utils/index.js";
 import { Signal } from "./signals.js";
 import { ConnectionType } from "./types.js";
 

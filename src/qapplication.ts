@@ -1,4 +1,4 @@
-import { Logger } from "@mocha/shared";
+import { Logger } from "./utils/index.js";
 import { QObject } from "./qobject.js";
 import { QThread, ThreadManager } from "./qthread.js";
 import { Signal } from "./signals.js";

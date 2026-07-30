@@ -1,5 +1,5 @@
 import * as http from "node:http";
-import { Logger, safeStringify } from "@mocha/shared";
+import { Logger, safeStringify } from "../utils/index.js";
 import { QObject } from "../qobject.js";
 import { ComponentInspector, type ComponentNode } from "./component-inspector.js";
 import { PropertyInspector } from "./property-inspector.js";

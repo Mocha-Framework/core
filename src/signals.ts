@@ -1,4 +1,4 @@
-import { Disposable, EventEmitter } from "@mocha/shared";
+import { Disposable, EventEmitter } from "./utils/index.js";
 
 export interface SignalConnection {
   disconnect(): void;

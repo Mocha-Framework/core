@@ -1,5 +1,5 @@
 import { ThreadManager } from "../index.js";
-import { Logger } from "@mocha/shared";
+import { Logger } from "../utils/index.js";
 
 const logger = new Logger("ThreadMonitor");
 

@@ -1,5 +1,5 @@
 import { QObject, QProperty, getMetaObjectHierarchy } from "../index.js";
-import { Logger, safeStringify } from "@mocha/shared";
+import { Logger, safeStringify } from "../utils/index.js";
 
 const logger = new Logger("PropertyInspector");
 

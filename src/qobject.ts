@@ -1,4 +1,4 @@
-import { Disposable, Logger } from "@mocha/shared";
+import { Disposable, Logger } from "./utils/index.js";
 import { Signal, SignalConnection } from "./signals.js";
 import { registerMetaObject, getMetaObject } from "./qmetaobject.js";
 import type { QMetaObjectData } from "./types.js";

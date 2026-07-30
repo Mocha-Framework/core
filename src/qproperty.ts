@@ -1,6 +1,6 @@
 import { Signal } from "./signals.js";
 import type { QMetaProperty } from "./types.js";
-import { Disposable } from "@mocha/shared";
+import { Disposable } from "./utils/index.js";
 import { activeEffectRef } from "./reactivity.js";
 
 let globalPropertyIdCounter = 0;

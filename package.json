@@ -1,7 +1,7 @@
 {
   "name": "@mocha/core",
   "version": "0.1.0",
-  "description": "Mocha Core - Qt-style object system for TypeScript",
+  "description": "Mocha Core — QObject system, QML components, design tokens",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -9,13 +9,40 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./qml": {
+      "types": "./dist/qml/index.d.ts",
+      "import": "./dist/qml/index.js"
+    },
+    "./tokens": {
+      "types": "./dist/tokens/index.d.ts",
+      "import": "./dist/tokens/index.js"
+    },
+    "./testkit": {
+      "types": "./dist/testkit/index.d.ts",
+      "import": "./dist/testkit/index.js"
     }
   },
   "scripts": {
     "build": "tsc",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "tsc"
   },
+  "files": [
+    "dist/"
+  ],
   "dependencies": {
-    "@mocha/shared": "^0.1.0"
+    "@mocha/bridge-api": "^0.1.0",
+    "@mocha/bridge-napi": "^0.1.0",
+    "@catppuccin/palette": "^1.0.0",
+    "zod": "^3.25.76"
+  },
+  "peerDependencies": {
+    "vitest": "^1.0.0"
+  },
+  "peerDependenciesMeta": {
+    "vitest": {
+      "optional": true
+    }
   }
 }

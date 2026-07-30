@@ -10,7 +10,6 @@ export default defineConfig({
   resolve: {
     alias: {
       "@mocha/core": resolve(__dirname, "src/index.ts"),
-      "@mocha/shared": resolve(__dirname, "../shared/src/index.ts"),
     },
   },
 });

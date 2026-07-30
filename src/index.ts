@@ -33,3 +33,6 @@ export {
   isModelRef,
 } from "./inputs.js";
 export type { InputRef, OutputRef, ModelRef } from "./inputs.js";
+
+export { Disposable, EventEmitter, Logger, safeStringify } from "./utils/index.js";
+export type { DeepPartial, NonNullableFields, LogEntry, LogHandler, Rect, Point, Size } from "./utils/index.js";
