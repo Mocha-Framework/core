@@ -261,6 +261,19 @@ test("inject() - throws for unregistered class", () => {
   assert(threw, "throws on unregistered class");
 });
 
+test("@Injectable({ providedIn: 'root' }) marks class as root service", () => {
+  @Injectable({ providedIn: "root" })
+  class RootService extends QObject {}
+  assert(
+    (RootService as any).__mochaRootService === true,
+    "class is marked as root service"
+  );
+  assert(
+    (RootService as any).__providedIn === "root",
+    "scope is preserved"
+  );
+});
+
 // ════════════════════════════════════════════════════════════
 // QObject
 // ════════════════════════════════════════════════════════════

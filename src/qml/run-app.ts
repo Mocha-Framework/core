@@ -1,5 +1,5 @@
 import { Logger } from "../utils/index.js";
-import { QObject, QProperty, QComputedProperty, effect, globalContainer, DebugServer, MochaForm } from "../index.js";
+import { QObject, QProperty, QComputedProperty, effect, globalContainer, rootInjector, DebugServer, MochaForm } from "../index.js";
 import { getQMLComponentMetadata, getAllQMLComponents, generateQMLSource, applyInjections, type ProxyEntry } from "./qml-component.js";
 import { bindChildControllers } from "./child-controller-binder.js";
 import {
@@ -211,7 +211,9 @@ async function bindControllerToQML(ctx: AppContext): Promise<void> {
     instance: service.instance,
     componentName: service.componentName,
   }));
-  const qmlSource = generateQMLSource(controller, newMeta, compileEntries);
+  const rootServiceNames = new Set(rootServices.map((s) => s.componentName));
+  const injectedFieldAliases = scanInjectedFields(controller, rootServiceNames);
+  const qmlSource = generateQMLSource(controller, newMeta, compileEntries, injectedFieldAliases);
   const isProduction = ctx.options?.mode === "production" || process.env.NODE_ENV === "production";
   const compiledShell = isProduction
     ? null
@@ -792,6 +794,10 @@ function runEventLoop(ctx: AppContext, nativeApp: any, entries: ProxyEntry[]): P
 
 function scanRootServices(): Array<{ instance: QObject; componentName: string }> {
   const results: Array<{ instance: QObject; componentName: string }> = [];
+  const seen = new Set<Function>();
+
+  // 1) @QMLComponent({ providedIn: "root" }) — keeps backward compat
+  //    for controllers that opt into root scope via the decorator.
   const all = getAllQMLComponents();
   for (const [cls, meta] of all.entries()) {
     if (meta.providedIn === "root") {
@@ -800,9 +806,56 @@ function scanRootServices(): Array<{ instance: QObject; componentName: string }>
       if (globalContainer.has(cls as any)) instance = globalContainer.resolve(cls as any);
       else instance = new (cls as any)();
       results.push({ instance, componentName: name });
+      seen.add(cls);
     }
   }
+
+  // 2) @Injectable({ providedIn: "root" }) — pure services (no template).
+  //    Auto-promoted to root QML proxy + context property.
+  for (const cls of rootInjector.list()) {
+    if (seen.has(cls)) continue;
+    if (!((cls as any).__mochaRootService === true)) continue;
+    const name = (cls as any).name;
+    if (!name) continue;
+    const instance = globalContainer.resolve(cls as any) as QObject;
+    results.push({ instance, componentName: name });
+    seen.add(cls);
+  }
+
   return results;
+}
+
+/**
+ * Scan the controller for fields whose values come from `inject(...)`.
+ * For each match, return the field name → class name mapping used by
+ * the QML codegen to rewrite `controller.<field>.X` → `<ClassName>.X`.
+ *
+ * Iterates instance own properties (TS class fields) — prototype-level
+ * metadata keys (`__qproperty_*`, `__qcomputed_*`, etc.) are skipped.
+ */
+export function scanInjectedFields(
+  controller: QObject,
+  rootServiceNames: Set<string>
+): Map<string, string> {
+  const aliases = new Map<string, string>();
+
+  for (const key of Object.getOwnPropertyNames(controller)) {
+    if (key.startsWith("__")) continue;
+    const value = (controller as any)[key];
+    if (!value) continue;
+    if (value instanceof QProperty || value instanceof QComputedProperty) continue;
+    if (typeof value === "function") continue;
+    if (value.__viewChild || value.__input || value.__output || value.__model) continue;
+    const ctor = (value as any).constructor;
+    if (!ctor || !ctor.name) continue;
+    if (!rootServiceNames.has(ctor.name)) continue;
+    aliases.set(key, ctor.name);
+    logger.debug(
+      `[inject-scan] controller.${key} → ${ctor.name} (root service)`
+    );
+  }
+
+  return aliases;
 }
 
 export function scanProperties(instance: QObject): Array<{ name: string; qp: QProperty | QComputedProperty<any> }> {

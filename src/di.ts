@@ -78,6 +78,19 @@ export class Injector {
     return false;
   }
 
+  /**
+   * Iterate every token registered as a factory in this injector (root or nested).
+   * Order is insertion order; entries from parent injectors come first.
+   */
+  list(): Function[] {
+    const result: Function[] = [];
+    if (this._parent) result.push(...this._parent.list());
+    for (const token of this._registry.keys()) {
+      if (!result.includes(token)) result.push(token);
+    }
+    return result;
+  }
+
   createChild(): Injector {
     return new Injector(this);
   }
@@ -105,6 +118,7 @@ export function Injectable(options?: InjectableOptions): ClassDecorator {
     const scope = options?.providedIn ?? "root";
     if (scope === "root") {
       rootInjector.register(ctor);
+      (ctor as any).__mochaRootService = true;
     }
     (ctor as any).__providedIn = scope;
   };

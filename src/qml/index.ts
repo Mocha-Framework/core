@@ -1,4 +1,5 @@
 export { QMLComponent, getQMLComponentMetadata, getAllQMLComponents, generateQMLSource, generateQMLFile, deriveTagName, getClassByTag, getTagRegistry } from "./qml-component.js";
+export { scanInjectedFields } from "./run-app.js";
 export type { QMLComponentOptions, QMLComponentMetadata, ProxyEntry } from "./qml-component.js";
 export { findChildComponentUsages, isChildComponentTag } from "./child-component-walker.js";
 export type { ChildComponentUsage } from "./child-component-walker.js";

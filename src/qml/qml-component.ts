@@ -11,7 +11,11 @@ const parser = new QMLTemplateParser();
 const astParser = new QmlAstParser();
 
 export interface QMLComponentOptions {
-  qml: string;
+  /**
+   * The QML template body. Optional — omit when the class is a pure
+   * service (use `@Injectable({ providedIn: "root" })` instead).
+   */
+  qml?: string;
   imports?: string[];
   autoBind?: boolean;
   hotReload?: boolean;
@@ -49,8 +53,13 @@ export interface ProxyEntry {
 export function QMLComponent(options: QMLComponentOptions) {
   return function <T extends { new (...args: any[]): any }>(target: T): T {
     const componentName = target.name;
-    const document = parser.parse(options.qml);
-    const bindings = parser.generateBindings(document, "controller");
+    const hasTemplate = typeof options.qml === "string" && options.qml.length > 0;
+    const document: ParsedQMLDocument = hasTemplate
+      ? parser.parse(options.qml as string)
+      : { imports: [], root: { type: "", properties: {}, children: [], signalHandlers: {} } };
+    const bindings: QMLBindingMap = hasTemplate
+      ? parser.generateBindings(document, "controller")
+      : {};
 
     const tagName = options.as ?? deriveTagName(componentName);
 
@@ -64,11 +73,11 @@ export function QMLComponent(options: QMLComponentOptions) {
     };
 
     componentRegistry.set(target, metadata);
-    tagToClass.set(tagName, target);
+    if (hasTemplate) tagToClass.set(tagName, target);
     logger.debug(`Registered QML component: ${componentName} as <${tagName}>`);
 
     (target as any).__qmlComponent = metadata;
-    (target as any).__qmlTemplate = options.qml;
+    (target as any).__qmlTemplate = options.qml ?? "";
     (target as any).__qmlDocument = document;
     (target as any).__qmlBindings = bindings;
     (target as any).__qmlTag = tagName;
@@ -130,9 +139,10 @@ export function generateInnerQML(
 export function generateQMLSource(
   component: QObject,
   metadata: QMLComponentMetadata,
-  rootProxies?: ProxyEntry[]
+  rootProxies?: ProxyEntry[],
+  injectedFieldAliases?: Map<string, string>
 ): string {
-  let qml = metadata.options.qml;
+  let qml = metadata.options.qml ?? "";
 
   // ── Deprecation: warn if user wrote controller.bridgeCall in their template ──
   // Non-controller proxies (CounterState, etc.) still need bridgeCall.
@@ -142,6 +152,21 @@ export function generateQMLSource(
       "Use controller.methodName() directly — the framework routes it internally. " +
       'Example: controller.echo() instead of controller.bridgeCall("echo").'
     );
+  }
+
+  // ── Inject field rewrites: controller.<field>.X → <ClassName>.X ──
+  // Strips trailing `.value` when rewriting QProperty reads, matching
+  // the controller.X.value → controller.X behavior so the resolved
+  // proxy access uses the underlying QQmlPropertyMap property directly.
+  const injectedClassNames = new Set<string>();
+  if (injectedFieldAliases && injectedFieldAliases.size > 0) {
+    for (const [field, className] of injectedFieldAliases) {
+      const reProp = new RegExp(`controller\\.${field}\\.(?!bridgeCall\\b)(\\w+)\\.value\\b`, "g");
+      qml = qml.replace(reProp, `${className}.$1`);
+      const reMethod = new RegExp(`controller\\.${field}\\.(?!bridgeCall\\b)(\\w+)`, "g");
+      qml = qml.replace(reMethod, `${className}.$1`);
+      injectedClassNames.add(className);
+    }
   }
 
   // ── Property access: controller.xxx.value → controller.xxx ──
@@ -156,9 +181,14 @@ export function generateQMLSource(
   });
 
   // ── Transform .get("X") + method() calls for root proxies ──
-  if (rootProxies && rootProxies.length > 0) {
-    for (const proxy of rootProxies) {
-      const name = proxy.componentName;
+  // Injected services participate in the same proxy transforms as
+  // root services declared via `@QMLComponent({ providedIn: "root" })`.
+  const rootNames = new Set<string>();
+  if (rootProxies) for (const proxy of rootProxies) rootNames.add(proxy.componentName);
+  for (const name of injectedClassNames) rootNames.add(name);
+
+  if (rootNames.size > 0) {
+    for (const name of rootNames) {
       // Property access: Xxx.get("prop") → Xxx.prop
       qml = qml.replace(
         new RegExp(name + '\\.get\\("([^"]*)"\\)', 'g'),
