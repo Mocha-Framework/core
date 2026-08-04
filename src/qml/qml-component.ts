@@ -4,11 +4,24 @@ import { QMLTemplateParser, type ParsedQMLDocument, type QMLBindingMap } from ".
 import { BindingEngine } from "./binding.js";
 import { QmlAstParser, type QmlDocument } from "./qml-ast-parser.js";
 import { analyzeQmlStructure } from "./qml-structure.js";
-import { encodeBridgeCall } from "@mocha/bridge-api";
+import { encodeBridgeCall } from "@mocha-framework/bridge-api";
 
 const logger = new Logger("QMLComponent");
 const parser = new QMLTemplateParser();
 const astParser = new QmlAstParser();
+
+/**
+ * QML object-scope properties that are built into every QML item
+ * (parent, width, height, etc.). When the `this.X` sugar runs, these
+ * names are left alone so `this.parent` still refers to the QML
+ * parent — not to a fictional `controller.parent` that doesn't exist.
+ */
+const QML_BUILTINS_THIS = new Set([
+  "parent", "width", "height", "x", "y", "z",
+  "visible", "enabled", "focus", "opacity",
+  "objectName", "data", "resources", "states", "transitions",
+  "transform", "anchors", "children",
+]);
 
 export interface QMLComponentOptions {
   /**
@@ -20,6 +33,16 @@ export interface QMLComponentOptions {
   autoBind?: boolean;
   hotReload?: boolean;
   providedIn?: "root" | "view";
+  /**
+   * Enables the `this.<field>` sugar inside the QML template, rewriting
+   * `this.X` → `controller.X` at template-compile time so the QML reads
+   * like Angular template syntax. Default: `true`. Set `false` to
+   * opt out and require the explicit `controller.X` prefix everywhere.
+   *
+   * Built-in QML scope properties (parent, width, height, visible, etc.)
+   * are whitelisted and never rewritten.
+   */
+  shortThis?: boolean;
   /**
    * The QML tag name that this component is registered as.
    *
@@ -143,6 +166,20 @@ export function generateQMLSource(
   injectedFieldAliases?: Map<string, string>
 ): string {
   let qml = metadata.options.qml ?? "";
+
+  // ── this.X sugar: this.<field> → controller.<field> ──
+  // Angular-style ergonomics: write `this.count.value` instead of
+  // `controller.count.value` in QML bindings. Runs before the
+  // `.value` strip on the next pass so `this.count.value` collapses
+  // straight to `controller.count` in one pass. Built-in QML scope
+  // properties (parent, width, height, visible, …) are whitelisted
+  // and left untouched — they refer to the QML object, not the
+  // controller. Disable with `@QMLComponent({ shortThis: false })`.
+  if (metadata.options.shortThis !== false) {
+    qml = qml.replace(/\bthis\.(\w+)/g, (match, name) =>
+      QML_BUILTINS_THIS.has(name) ? match : `controller.${name}`
+    );
+  }
 
   // ── Deprecation: warn if user wrote controller.bridgeCall in their template ──
   // Non-controller proxies (CounterState, etc.) still need bridgeCall.

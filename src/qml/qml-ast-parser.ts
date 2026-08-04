@@ -273,13 +273,114 @@ export class QmlAstParser {
 
   private _extractAttrs(body: string): Record<string, string> {
     const attrs: Record<string, string> = {};
-    const attrRegex = /(\w+)\s*:\s*("[^"]*"|'[^']*'|[^;\n{]+?)(?=[\s;}])/g;
-    let m;
-    while ((m = attrRegex.exec(body)) !== null) {
-      const value = m[2].replace(/^["']|["']$/g, "");
-      if (m[1] !== "id") attrs[m[1]] = value;
+    let i = 0;
+    while (i < body.length) {
+      // Skip whitespace and newlines between attributes
+      while (i < body.length && /[\s]/.test(body[i])) i++;
+      if (i >= body.length || body[i] === "}") break;
+
+      // Parse key (word chars + dots for nested properties like font.pixelSize)
+      const keyStart = i;
+      while (i < body.length && /[\w.]/.test(body[i])) i++;
+      const key = body.slice(keyStart, i);
+      if (!key) break;
+
+      // Skip whitespace, expect ':'
+      while (i < body.length && /[\s]/.test(body[i])) i++;
+      if (body[i] !== ":") {
+        // Not an attribute — could be a child element (`Tag { ... }`).
+        // Skip over it (track nested braces) so we don't get tripped up by
+        // its internal structure.
+        let depth = 0;
+        while (i < body.length) {
+          const c = body[i];
+          if (c === "{") depth++;
+          else if (c === "}") {
+            if (depth === 0) break;
+            depth--;
+          } else if (depth === 0 && (c === ";" || c === "\n")) {
+            break;
+          }
+          i++;
+        }
+        if (body[i] === ";") i++;
+        continue;
+      }
+      i++; // consume ':'
+      while (i < body.length && /[ \t]/.test(body[i])) i++;
+
+      // Parse value
+      const value = this._extractAttrValue(body, i);
+      if (value === null) {
+        // Couldn't parse — bail
+        break;
+      }
+
+      if (key !== "id") attrs[key] = value.text;
+      i = value.endOffset;
+      // Skip optional ';' separator
+      if (body[i] === ";") i++;
     }
     return attrs;
+  }
+
+  /**
+   * Extract a single attribute value starting at offset `i`.
+   * Returns `{ text, endOffset }` where `text` preserves the original
+   * syntax (including `"..."` / `'...'` quoting and `{ ... }` blocks) so
+   * downstream consumers can detect literal strings vs. raw expressions.
+   */
+  private _extractAttrValue(body: string, i: number): { text: string; endOffset: number } | null {
+    if (i >= body.length) return null;
+    const ch = body[i];
+
+    // Block value: `{ ... }` — always a standalone block.
+    if (ch === "{") {
+      let depth = 1;
+      let j = i + 1;
+      while (j < body.length && depth > 0) {
+        const c = body[j];
+        const n = body[j + 1] ?? "";
+        if (c === '"' && n === '"') { j += 2; continue; }
+        if (c === "'" && n === "'") { j += 2; continue; }
+        if (c === "{") depth++;
+        else if (c === "}") depth--;
+        j++;
+      }
+      return { text: body.slice(i, j), endOffset: j };
+    }
+
+    // Everything else is a raw expression that may include one or more
+    // string literals (e.g. `"Count: " + controller.count.value`).
+    // Read until we hit ';' or '}' at depth 0 — but only after consuming
+    // any continuation past a closing quote.
+    const start = i;
+    let depth = 0;
+    let inStr: '"' | "'" | null = null;
+    while (i < body.length) {
+      const c = body[i];
+      const n = body[i + 1] ?? "";
+
+      if (inStr) {
+        if (c === "\\") { i += 2; continue; }
+        if (c === inStr) inStr = null;
+        i++;
+        continue;
+      }
+      if (c === '"' || c === "'") { inStr = c as '"' | "'"; i++; continue; }
+
+      if (c === "{") depth++;
+      else if (c === "}") {
+        if (depth === 0) break;
+        depth--;
+      } else if (depth === 0 && (c === ";" || c === "\n")) {
+        break;
+      }
+      i++;
+    }
+    const text = body.slice(start, i).trim();
+    if (!text) return null;
+    return { text, endOffset: i };
   }
 
   private _lineAt(offset: number): number {

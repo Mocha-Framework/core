@@ -1,5 +1,5 @@
-import type { FlavorName, Palette } from "./palettes";
-import { palettes } from "./palettes";
+import type { FlavorName, Palette } from "./palettes.js";
+import { palettes } from "./palettes.js";
 
 type HexColor = string;
 

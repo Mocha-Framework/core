@@ -8,7 +8,7 @@ import {
   isModelRef,
   effect,
   QObject,
-} from "@mocha/core";
+} from "@mocha-framework/core";
 
 const flush = () => new Promise<void>((r) => queueMicrotask(r));
 

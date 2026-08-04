@@ -1,5 +1,5 @@
-import { QObject, QProperty, qproperty, inject, Injectable, globalContainer, rootInjector } from "@mocha/core";
-import { scanInjectedFields } from "@mocha/core/qml";
+import { QObject, QProperty, qproperty, inject, Injectable, globalContainer, rootInjector } from "@mocha-framework/core";
+import { scanInjectedFields } from "@mocha-framework/core/qml";
 
 let passed = 0;
 let failed = 0;

@@ -9,7 +9,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      "@mocha/core": resolve(__dirname, "src/index.ts"),
+      "@mocha-framework/core": resolve(__dirname, "src/index.ts"),
     },
   },
 });

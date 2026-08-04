@@ -1,6 +1,6 @@
 {
-  "name": "@mocha/core",
-  "version": "0.2.0",
+  "name": "@mocha-framework/core",
+  "version": "0.2.2-alpha.0",
   "description": "Mocha Core — QObject system, QML components, design tokens",
   "type": "module",
   "main": "./dist/index.js",
@@ -13,6 +13,11 @@
     "./qml": {
       "types": "./dist/qml/index.d.ts",
       "import": "./dist/qml/index.js"
+    },
+    "./browser": {
+      "types": "./dist/browser.d.ts",
+      "import": "./dist/browser.js",
+      "default": "./dist/browser.js"
     },
     "./tokens": {
       "types": "./dist/tokens/index.d.ts",
@@ -32,10 +37,9 @@
     "dist/"
   ],
   "dependencies": {
-    "@mocha/bridge-api": "^0.1.0",
-    "@mocha/bridge-napi": "^0.2.0",
     "@catppuccin/palette": "^1.0.0",
-    "zod": "^3.25.76"
+    "zod": "^3.25.76",
+    "@mocha-framework/bridge-api": "^0.1.0-alpha.0"
   },
   "peerDependencies": {
     "vitest": "^1.0.0"
@@ -44,5 +48,17 @@
     "vitest": {
       "optional": true
     }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Mocha-Framework/core.git"
+  },
+  "keywords": [],
+  "bugs": {
+    "url": "https://github.com/Mocha-Framework/core/issues"
+  },
+  "homepage": "https://github.com/Mocha-Framework/core#readme",
+  "optionalDependencies": {
+    "@mocha-framework/bridge-napi": "^0.2.0-alpha.0"
   }
 }

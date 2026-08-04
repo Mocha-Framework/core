@@ -1,4 +1,4 @@
-import { QProperty, Signal, QObject, QApplication, QTimer, ThreadManager, effect, ReactiveEffect, QComputedProperty, inject, Injectable, qproperty, globalContainer } from "@mocha/core";
+import { QProperty, Signal, QObject, QApplication, QTimer, ThreadManager, effect, ReactiveEffect, QComputedProperty, inject, Injectable, qproperty, globalContainer } from "@mocha-framework/core";
 
 let passed = 0;
 let failed = 0;

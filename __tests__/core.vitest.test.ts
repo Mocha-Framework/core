@@ -7,7 +7,7 @@ import {
   QTimer,
   effect,
   QComputedProperty,
-} from "@mocha/core";
+} from "@mocha-framework/core";
 
 const flush = () => new Promise<void>((r) => queueMicrotask(r));
 

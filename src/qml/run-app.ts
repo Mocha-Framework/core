@@ -10,11 +10,11 @@ import {
   type ViewChildRef,
 } from "./view-child.js";
 import { analyzeQmlStructure, extractLatestTaggedQmlTemplate, type QmlWindowProps } from "./qml-structure.js";
-import { parseBridgeCall, validateBridgeCall, serializePropertyValue, deserializePropertyValue } from "@mocha/bridge-api";
+import { parseBridgeCall, validateBridgeCall, serializePropertyValue, deserializePropertyValue } from "@mocha-framework/bridge-api";
 import * as path from "node:path";
 import * as fs from "node:fs";
 
-// ThemeData interface — duck-typed, avoids composit-build import issues with @mocha/tokens
+// ThemeData interface — duck-typed, avoids composit-build import issues with @mocha-framework/tokens
 export interface ThemeLike {
   toQMLOverrides(): Record<string, string>;
 }
@@ -133,7 +133,7 @@ export async function runApp<T extends QObject>(
 
   let nativeApp: any = null;
   try {
-    const { createNativeApp } = await import("@mocha/bridge-napi");
+    const { createNativeApp } = await import("@mocha-framework/bridge-napi");
     nativeApp = await createNativeApp();
   } catch (err) {
     const platform = `${process.platform}-${process.arch}`;

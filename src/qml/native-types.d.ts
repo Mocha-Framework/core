@@ -1,4 +1,4 @@
-declare module "@mocha/bridge-napi" {
+declare module "@mocha-framework/bridge-napi" {
   export class NativeApp {
     init(): void;
     loadQML(qml: string, basePath?: string): void;
